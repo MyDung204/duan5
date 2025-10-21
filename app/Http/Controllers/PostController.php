@@ -41,7 +41,7 @@ class PostController extends Controller
             $post->categories()->sync($validated['category_ids']);
         }
 
-        // 6. Chuyển hướng về trang quanlyduan với thông báo
-        return redirect()->route('home')->with('status', 'Tạo bài đăng thành công!');
+        // 6. Chuyển hướng về trang dashboard với thông báo
+        return redirect()->route('dashboard')->with('status', 'Tạo bài đăng thành công!');
     }
 }

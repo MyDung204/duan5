@@ -16,11 +16,11 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-// === SỬA Ở ĐÂY: THAY ĐỔI ROUTE DASHBOARD ===
-// Route này sẽ trỏ đến CategoryController để hiển thị trang quản lý của bạn
-Route::get('/dashboard', [CategoryController::class, ''])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+// === DASHBOARD ROUTE ===
+// Route dashboard trở về bình thường
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 // Nhóm route yêu cầu đăng nhập
 Route::middleware(['auth'])->group(function () {
@@ -31,9 +31,10 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('settings/appearance', 'settings.appearance')->name('appearance.edit');
 
     // ----- Categories CRUD -----
-    // Các route này vẫn cần thiết để xử lý form
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::get('/categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::get('/categories/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
     Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 });

@@ -15,6 +15,10 @@
                 <flux:navlist.group :heading="__('Platform')" class="grid">
                     <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
                 </flux:navlist.group>
+                
+                <flux:navlist.group :heading="__('Quản lý')" class="grid">
+                    <flux:navlist.item icon="folder-git-2" :href="route('categories.index')" :current="request()->routeIs('categories.*')" wire:navigate>{{ __('Danh mục') }}</flux:navlist.item>
+                </flux:navlist.group>
             </flux:navlist>
 
             <flux:spacer />
@@ -30,6 +34,7 @@
             </flux:navlist>
 
             <!-- Desktop User Menu -->
+            @auth
             <flux:dropdown class="hidden lg:block" position="bottom" align="start">
                 <flux:profile
                     :name="auth()->user()->name"
@@ -74,9 +79,11 @@
                     </form>
                 </flux:menu>
             </flux:dropdown>
+            @endauth
         </flux:sidebar>
 
         <!-- Mobile User Menu -->
+        @auth
         <flux:header class="lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
@@ -125,6 +132,7 @@
                 </flux:menu>
             </flux:dropdown>
         </flux:header>
+        @endauth
 
         {{ $slot }}
 
