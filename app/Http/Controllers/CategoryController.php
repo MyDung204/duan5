@@ -74,27 +74,23 @@ class CategoryController extends Controller
         $allPosts = Post::with('category')->orderBy('created_at', 'desc')->get();
 
         // Truyền toàn bộ biến sang view
-        return view('categories.index', compact(
-            'authors',
-            'categories',
-            'allPosts',
-            'parentOptions',
-            'childOptions'
-        ));
+        return view('categories.index', [
+            'authors' => $authors,
+            'allCategories' => $categories,
+            'allPosts' => $allPosts,
+            'parentOptions' => $parentOptions,
+            'childOptions' => $childOptions
+        ]);
     }
 
     public function show($id)
     {
-        $category = Category::findOrFail($id);
-        $posts = Post::where('category_id', $id)->get();
-
-        return view('category.show', compact('category', 'posts'));
+        return redirect()->route('categories.index', ['parent_id' => $id]);
     }
 
     public function create()
     {
-        $parentOptions = Category::whereNull('parent_id')->get();
-        return view('category.create', compact('parentOptions'));
+        return redirect()->route('categories.index');
     }
 
     public function store(Request $request)
@@ -152,9 +148,7 @@ class CategoryController extends Controller
 
     public function edit($id)
     {
-        $category = Category::findOrFail($id);
-        $parentOptions = Category::whereNull('parent_id')->get();
-        return view('category.edit', compact('category', 'parentOptions'));
+        return redirect()->route('categories.index', ['edit' => $id]);
     }
 
     public function update(Request $request, $id)
