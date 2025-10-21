@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\PostController; // THÊM DÒNG NÀY
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use Livewire\Volt\Volt;
@@ -12,11 +11,14 @@ use Livewire\Volt\Volt;
 |--------------------------------------------------------------------------
 */
 
-// Trang chủ
-Route::get('/', [CategoryController::class, 'index'])->name('home');
+// Trang chủ có thể giữ nguyên hoặc chuyển hướng đến dashboard
+Route::get('/', function () {
+    return redirect()->route('dashboard');
+});
 
-// Trang dashboard
-Route::view('dashboard', 'dashboard')
+// === SỬA Ở ĐÂY: THAY ĐỔI ROUTE DASHBOARD ===
+// Route này sẽ trỏ đến CategoryController để hiển thị trang quản lý của bạn
+Route::get('/dashboard', [CategoryController::class, ''])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
@@ -29,18 +31,9 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('settings/appearance', 'settings.appearance')->name('appearance.edit');
 
     // ----- Categories CRUD -----
+    // Các route này vẫn cần thiết để xử lý form
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
     Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
-
-    // ----- Posts CRUD (CẬP NHẬT Ở ĐÂY) -----
-    Route::post('/posts', [PostController::class, 'store'])->name('posts.store');
-    Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
-    Route::delete('/posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
-    // Bạn có thể thêm route get('/posts', ...) nếu muốn có một trang riêng để quản lý bài viết
 });
-
-
-
-// Dòng require auth.php đã bị xóa/comment đi là chính xác

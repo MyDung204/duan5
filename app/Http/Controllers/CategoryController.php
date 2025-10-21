@@ -14,7 +14,7 @@ class CategoryController extends Controller
     /**
      * Hiển thị danh sách danh mục và form.
      */
-    public function index(Request $request)
+    public function showDashboard(Request $request)
     {
         $categories = Category::with('user:id,name', 'children')->latest()->paginate(10);
         $authors = User::oldest('name')->get(['id', 'name']);
@@ -26,7 +26,7 @@ class CategoryController extends Controller
             $childOptions = Category::where('parent_id', $request->parent_id)->orderBy('title')->get();
         }
 
-        return view('quanlydanhmuc', compact(
+        return view('dashboard', compact(
             'categories', 'authors', 'allCategories', 'parentOptions', 'childOptions'
         ));
     }
