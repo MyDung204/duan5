@@ -68,7 +68,8 @@ class CategoryController extends Controller
         }
 
         // Phân trang
-        $categories = $query->paginate(15)->appends($request->query());
+        // === ĐÃ SỬA TÊN BIẾN TẠI ĐÂY ===
+        $allCategories = $query->paginate(15)->appends($request->query());
 
         // Lấy danh sách bài viết (nếu có model Post)
         $allPosts = Post::with('category')->orderBy('created_at', 'desc')->get();
@@ -76,7 +77,8 @@ class CategoryController extends Controller
         // Truyền toàn bộ biến sang view
         return view('categories.index', [
             'authors' => $authors,
-            'allCategories' => $categories,
+            // === VÀ SỬA Ở ĐÂY ===
+            'allCategories' => $allCategories,
             'allPosts' => $allPosts,
             'parentOptions' => $parentOptions,
             'childOptions' => $childOptions
