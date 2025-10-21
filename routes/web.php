@@ -41,4 +41,6 @@ Route::middleware(['auth'])->group(function () {
     // Bạn có thể thêm route get('/posts', ...) nếu muốn có một trang riêng để quản lý bài viết
 });
 
+
+
 // Dòng require auth.php đã bị xóa/comment đi là chính xác
