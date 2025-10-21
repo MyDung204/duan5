@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -17,17 +16,9 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        // Lấy danh sách danh mục đã phân trang
-        $categories = Category::with('user:id,name', 'children', 'posts')
-            ->when($request->has('q'), function ($query) use ($request) {
-                $query->where('title', 'like', '%' . $request->q . '%');
-            })
-            ->latest()->paginate(10);
-
-        // Lấy dữ liệu cho các dropdown filter và form
+        $categories = Category::with('user:id,name', 'children')->latest()->paginate(10);
         $authors = User::oldest('name')->get(['id', 'name']);
         $allCategories = Category::orderBy('title')->get(['id', 'title']);
-        $allPosts = Post::orderBy('title')->get(['id', 'title']);
         $parentOptions = Category::whereNull('parent_id')->orderBy('title')->get();
         $childOptions = [];
 
@@ -35,13 +26,8 @@ class CategoryController extends Controller
             $childOptions = Category::where('parent_id', $request->parent_id)->orderBy('title')->get();
         }
 
-        return view('quanlyduan', compact(
-            'categories',
-            'authors',
-            'allCategories',
-            'allPosts',
-            'parentOptions',
-            'childOptions'
+        return view('quanlydanhmuc', compact(
+            'categories', 'authors', 'allCategories', 'parentOptions', 'childOptions'
         ));
     }
 
@@ -50,36 +36,27 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. Validate dữ liệu đầu vào
         $validated = $request->validate([
-            'title' => 'required|string|max:255|unique:categories,title',
-            'author_name' => 'required|string|max:255',
+            'title' => 'required|string|max:100|unique:categories,title',
+            'author_name' => 'required|string|max:50',
             'short_description' => 'nullable|string|max:255',
-            'content' => 'nullable|string',
-            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'content' => 'nullable|string|max:5000',
+            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'gallery_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'parent_id' => 'nullable|exists:categories,id',
-            'post_ids' => 'nullable|array',
-            'post_ids.*' => 'exists:posts,id',
         ]);
-
-        // 2. Xử lý upload ảnh (nếu có)
-        if ($request->hasFile('image_path')) {
-            $imagePath = $request->file('image_path')->store('images', 'public');
-            $validated['image_path'] = $imagePath;
+        
+        if ($request->hasFile('banner_image')) {
+            $validated['banner_image_path'] = $request->file('banner_image')->store('images/banners', 'public');
         }
 
-        // 3. Tạo slug từ title
+        if ($request->hasFile('gallery_image')) {
+            $validated['gallery_image_path'] = $request->file('gallery_image')->store('images/galleries', 'public');
+        }
+
         $validated['slug'] = Str::slug($validated['title']);
+        Category::create($validated);
 
-        // 4. Tạo mới Category và lưu
-        $category = Category::create($validated);
-
-        // 5. Gắn các bài viết vào danh mục (nếu có)
-        if ($request->has('post_ids')) {
-            $category->posts()->sync($validated['post_ids']);
-        }
-
-        // 6. Chuyển hướng về trang danh sách với thông báo thành công
         return redirect()->route('categories.index')->with('status', 'Thêm danh mục mới thành công!');
     }
 
@@ -88,37 +65,28 @@ class CategoryController extends Controller
      */
     public function update(Request $request, Category $category)
     {
-        // Validate dữ liệu, cho phép title trùng với chính nó
         $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255', Rule::unique('categories')->ignore($category->id)],
-            'author_name' => 'required|string|max:255',
+            'title' => ['required', 'string', 'max:100', Rule::unique('categories')->ignore($category->id)],
+            'author_name' => 'required|string|max:50',
             'short_description' => 'nullable|string|max:255',
-            'content' => 'nullable|string',
-            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'content' => 'nullable|string|max:5000',
+            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'gallery_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'parent_id' => 'nullable|exists:categories,id',
-            'post_ids' => 'nullable|array',
-            'post_ids.*' => 'exists:posts,id',
         ]);
 
-        // Xử lý upload ảnh mới
-        if ($request->hasFile('image_path')) {
-            // Xóa ảnh cũ nếu có
-            if ($category->image_path) {
-                File::delete(storage_path('app/public/' . $category->image_path));
-            }
-            $imagePath = $request->file('image_path')->store('images', 'public');
-            $validated['image_path'] = $imagePath;
+        if ($request->hasFile('banner_image')) {
+            if ($category->banner_image_path) File::delete(storage_path('app/public/' . $category->banner_image_path));
+            $validated['banner_image_path'] = $request->file('banner_image')->store('images/banners', 'public');
         }
-
-        // Cập nhật slug nếu title thay đổi
+        if ($request->hasFile('gallery_image')) {
+            if ($category->gallery_image_path) File::delete(storage_path('app/public/' . $category->gallery_image_path));
+            $validated['gallery_image_path'] = $request->file('gallery_image')->store('images/galleries', 'public');
+        }
+        
         $validated['slug'] = Str::slug($validated['title']);
-
-        // Cập nhật thông tin
         $category->update($validated);
-
-        // Cập nhật lại danh sách bài viết
-        $category->posts()->sync($request->post_ids ?? []);
-
+        
         return redirect()->route('categories.index')->with('status', 'Cập nhật danh mục thành công!');
     }
 
@@ -127,12 +95,12 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        // Xóa ảnh liên quan nếu có
-        if ($category->image_path) {
-            File::delete(storage_path('app/public/' . $category->image_path));
+        if ($category->banner_image_path) {
+            File::delete(storage_path('app/public/' . $category->banner_image_path));
         }
-
-        // Xóa danh mục
+        if ($category->gallery_image_path) {
+            File::delete(storage_path('app/public/' . $category->gallery_image_path));
+        }
         $category->delete();
 
         return redirect()->route('categories.index')->with('status', 'Xóa danh mục thành công!');
