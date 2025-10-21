@@ -3,12 +3,7 @@
         {{-- Header với thống kê và tìm kiếm --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex flex-col gap-4">
-                {{-- Header với tiêu đề --}}
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Quản lý Danh mục</h1>
-                    <p class="text-gray-600 dark:text-gray-400 mt-1">Tổ chức và quản lý các danh mục của bạn một cách hiệu quả</p>
-                </div>
-                
+                {{-- Header với tiêu đề --}
                 {{-- Thống kê nhanh --}}
                 <div class="flex gap-4">
                     <div class="bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -26,68 +21,7 @@
                 </div>
             </div>
             
-            {{-- Thanh tìm kiếm và lọc --}}
-            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <form method="GET" action="{{ route('categories.index') }}" class="flex flex-col lg:flex-row gap-4">
-                    <div class="flex-1">
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
-                            <input type="text" name="search" value="{{ request('search') }}" 
-                                   placeholder="Tìm kiếm theo tên danh mục..." 
-                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                    </div>
-                    
-                    <div class="flex gap-2">
-                        <select name="author" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Tất cả tác giả</option>
-                            @foreach($authors as $author)
-                                <option value="{{ $author }}" {{ request('author') === $author ? 'selected' : '' }}>{{ $author }}</option>
-                            @endforeach
-                        </select>
-                        
-                        <select name="parent_id" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Tất cả danh mục cha</option>
-                            @foreach($parentOptions as $parent)
-                                <option value="{{ $parent->id }}" {{ (string)request('parent_id') === (string)$parent->id ? 'selected' : '' }}>{{ $parent->title }}</option>
-                            @endforeach
-                        </select>
-                        
-                        <select name="type" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Tất cả loại</option>
-                            <option value="parent" {{ request('type') === 'parent' ? 'selected' : '' }}>Danh mục cha</option>
-                            <option value="child" {{ request('type') === 'child' ? 'selected' : '' }}>Danh mục con</option>
-                        </select>
-                        
-                        <select name="sort" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="newest" {{ request('sort') === 'newest' ? 'selected' : '' }}>Mới nhất</option>
-                            <option value="oldest" {{ request('sort') === 'oldest' ? 'selected' : '' }}>Cũ nhất</option>
-                            <option value="name_asc" {{ request('sort') === 'name_asc' ? 'selected' : '' }}>Tên A-Z</option>
-                            <option value="name_desc" {{ request('sort') === 'name_desc' ? 'selected' : '' }}>Tên Z-A</option>
-                        </select>
-                        
-                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-                            </svg>
-                            Lọc
-                        </button>
-                        
-                        @if(request()->hasAny(['search', 'author', 'parent_id', 'sort']))
-                            <a href="{{ route('categories.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                                Xóa bộ lọc
-                            </a>
-                        @endif
-                    </div>
-                </form>
-            </div>
+            
         </div>
 
         {{-- Form thêm/sửa danh mục --}}
