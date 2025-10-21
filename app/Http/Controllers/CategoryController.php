@@ -4,127 +4,137 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
+    /**
+     * Hiển thị danh sách danh mục và form.
+     */
     public function index(Request $request)
     {
-        $authors = Category::select('author_name')->distinct()->pluck('author_name');
+        // Lấy danh sách danh mục đã phân trang
+        $categories = Category::with('user:id,name', 'children', 'posts')
+            ->when($request->has('q'), function ($query) use ($request) {
+                $query->where('title', 'like', '%' . $request->q . '%');
+            })
+            ->latest()->paginate(10);
+
+        // Lấy dữ liệu cho các dropdown filter và form
+        $authors = User::oldest('name')->get(['id', 'name']);
         $allCategories = Category::orderBy('title')->get(['id', 'title']);
         $allPosts = Post::orderBy('title')->get(['id', 'title']);
-        $parentOptions = Category::whereNull('parent_id')->orderBy('title')->get(['id', 'title']);
+        $parentOptions = Category::whereNull('parent_id')->orderBy('title')->get();
+        $childOptions = [];
 
-        $parentId = $request->input('parent_id');
-        $childOptions = $parentId ? Category::where('parent_id', $parentId)->orderBy('title')->get(['id', 'title']) : collect();
+        if ($request->has('parent_id') && $request->parent_id) {
+            $childOptions = Category::where('parent_id', $request->parent_id)->orderBy('title')->get();
+        }
 
-        $query = Category::with('parent', 'children.posts', 'posts')->withCount('posts');
-
-        $this->applyFilters($request, $query);
-        $sort = $request->input('sort', 'title_asc');
-        $this->applySorting($sort, $query);
-
-        $categories = $query->paginate(10)->withQueryString();
-
-        return view('quanlydanhmuc', compact(
-            'categories', 'authors', 'allCategories', 'allPosts',
-            'parentOptions', 'childOptions'
+        return view('quanlyduan', compact(
+            'categories',
+            'authors',
+            'allCategories',
+            'allPosts',
+            'parentOptions',
+            'childOptions'
         ));
     }
 
+    /**
+     * Lưu một danh mục mới vào cơ sở dữ liệu.
+     */
     public function store(Request $request)
     {
+        // 1. Validate dữ liệu đầu vào
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => 'required|string|max:255|unique:categories,title',
             'author_name' => 'required|string|max:255',
-            'short_description' => 'nullable|string|max:500',
+            'short_description' => 'nullable|string|max:255',
             'content' => 'nullable|string',
-            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'parent_id' => 'nullable|exists:categories,id',
             'post_ids' => 'nullable|array',
-            'post_ids.*' => 'integer|exists:posts,id',
+            'post_ids.*' => 'exists:posts,id',
         ]);
 
+        // 2. Xử lý upload ảnh (nếu có)
         if ($request->hasFile('image_path')) {
-            $validated['image_path'] = $request->file('image_path')->store('categories', 'public');
+            $imagePath = $request->file('image_path')->store('images', 'public');
+            $validated['image_path'] = $imagePath;
         }
 
+        // 3. Tạo slug từ title
+        $validated['slug'] = Str::slug($validated['title']);
+
+        // 4. Tạo mới Category và lưu
         $category = Category::create($validated);
 
-        if (!empty($validated['post_ids'])) {
+        // 5. Gắn các bài viết vào danh mục (nếu có)
+        if ($request->has('post_ids')) {
             $category->posts()->sync($validated['post_ids']);
         }
 
-        return redirect()->route('categories.index')->with('status', 'Tạo danh mục thành công');
+        // 6. Chuyển hướng về trang danh sách với thông báo thành công
+        return redirect()->route('categories.index')->with('status', 'Thêm danh mục mới thành công!');
     }
 
+    /**
+     * Cập nhật một danh mục đã có.
+     */
     public function update(Request $request, Category $category)
     {
+        // Validate dữ liệu, cho phép title trùng với chính nó
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => ['required', 'string', 'max:255', Rule::unique('categories')->ignore($category->id)],
             'author_name' => 'required|string|max:255',
-            'short_description' => 'nullable|string|max:500',
+            'short_description' => 'nullable|string|max:255',
             'content' => 'nullable|string',
-            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image_path' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'parent_id' => 'nullable|exists:categories,id',
             'post_ids' => 'nullable|array',
-            'post_ids.*' => 'integer|exists:posts,id',
+            'post_ids.*' => 'exists:posts,id',
         ]);
 
+        // Xử lý upload ảnh mới
         if ($request->hasFile('image_path')) {
+            // Xóa ảnh cũ nếu có
             if ($category->image_path) {
-                Storage::disk('public')->delete($category->image_path);
+                File::delete(storage_path('app/public/' . $category->image_path));
             }
-            $validated['image_path'] = $request->file('image_path')->store('categories', 'public');
+            $imagePath = $request->file('image_path')->store('images', 'public');
+            $validated['image_path'] = $imagePath;
         }
 
+        // Cập nhật slug nếu title thay đổi
+        $validated['slug'] = Str::slug($validated['title']);
+
+        // Cập nhật thông tin
         $category->update($validated);
 
-        $category->posts()->sync($validated['post_ids'] ?? []);
+        // Cập nhật lại danh sách bài viết
+        $category->posts()->sync($request->post_ids ?? []);
 
-        return redirect()->route('categories.index')->with('status', 'Cập nhật danh mục thành công');
+        return redirect()->route('categories.index')->with('status', 'Cập nhật danh mục thành công!');
     }
 
+    /**
+     * Xóa một danh mục.
+     */
     public function destroy(Category $category)
     {
+        // Xóa ảnh liên quan nếu có
         if ($category->image_path) {
-            Storage::disk('public')->delete($category->image_path);
+            File::delete(storage_path('app/public/' . $category->image_path));
         }
 
-        $category->posts()->detach();
+        // Xóa danh mục
         $category->delete();
-        
-        return redirect()->route('categories.index')->with('status', 'Đã xóa danh mục');
-    }
 
-    private function applyFilters(Request $request, $query)
-    {
-        if ($q = $request->input('q')) {
-            $query->where(fn($subQuery) => $subQuery->where('title', 'like', "%{$q}%")->orWhere('short_description', 'like', "%{$q}%"));
-        }
-        if ($author = $request->input('author')) {
-            $query->where('author_name', $author);
-        }
-        if ($parentId = $request->input('parent_id')) {
-            $query->where('parent_id', $parentId)->orWhere('id', $parentId);
-        }
-    }
-    
-    private function applySorting($sort, $query)
-    {
-        switch ($sort) {
-            case 'title_desc':
-                $query->orderBy('title', 'desc');
-                break;
-            case 'posts_desc':
-                $query->orderBy('posts_count', 'desc');
-                break;
-            case 'posts_asc':
-                $query->orderBy('posts_count', 'asc');
-                break;
-            default:
-                $query->orderBy('title', 'asc');
-        }
+        return redirect()->route('categories.index')->with('status', 'Xóa danh mục thành công!');
     }
 }

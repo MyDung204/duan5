@@ -4,47 +4,44 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str; // Quan trọng: Thêm dòng này
+use Illuminate\Support\Str;
 
 class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'title',
-        'slug',
-        'parent_id',
-        'author_name',
-        'short_description',
-        'content',
-        'image_path',
-    ];
+    protected $guarded = ['id'];
 
-    /**
-     * Tự động tạo slug từ title mỗi khi lưu model.
-     */
-    protected static function booted(): void
+    public static function boot()
     {
-        static::saving(function ($category) {
-            $category->slug = Str::slug($category->title);
+        parent::boot();
+        static::saving(function ($model) {
+            $model->slug = Str::slug($model->title);
         });
     }
+    
+    /**
+     * THÊM HÀM NÀY VÀO
+     * Định nghĩa mối quan hệ "một danh mục thuộc về một người dùng".
+     */
+    public function user()
+    {
+        // Giả sử bảng 'categories' của bạn có cột 'user_id'
+        return $this->belongsTo(User::class);
+    }
 
-    public function parent(): BelongsTo
+    public function posts()
+    {
+        return $this->belongsToMany(Post::class);
+    }
+
+    public function parent()
     {
         return $this->belongsTo(Category::class, 'parent_id');
     }
 
-    public function children(): HasMany
+    public function children()
     {
         return $this->hasMany(Category::class, 'parent_id');
-    }
-
-    public function posts(): BelongsToMany
-    {
-        return $this->belongsToMany(Post::class)->withTimestamps();
     }
 }
